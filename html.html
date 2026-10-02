@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Contador de Personas</title>
+
+  <!-- Tipografías: Cinzel (números/títulos) + Outfit (texto) y Material Symbols -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ===== Tokens de color (sobrescriben los de M3) ===== */
+    :root {
+      --bg-from: #2B060A;        /* borgoña profundo */
+      --bg-to: #4A0E17;          /* carmesí oscuro */
+      --surface: rgba(92, 22, 29, 0.78);  /* coral muy oscuro, cristalino */
+      --outline: #D9B48F;        /* oro pálido / hueso */
+      --on-surface: #F2E9D8;     /* hueso brillante */
+      --primary: #FF6B6B;        /* coral brillante */
+      --on-primary: #2B060A;
+      --secondary: #6E2A31;      /* borgoña apagado */
+      --radius: 1.5rem;
+      --shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, .35), 0 0.125rem 0.375rem rgba(0, 0, 0, .25);
+    }
+
+    * { box-sizing: border-box; margin: 0; }
+
+    /* Escala fluida: todo está en rem, así que al ampliar la ventana
+       (o hacer Ctrl -) la interfaz crece en proporción y no se queda pequeña.
+       Mínimo 16px para móvil. Ajusta 1.3vw para hacerla más grande o pequeña. */
+    html { font-size: max(16px, 1.3vw); }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: 'Outfit', system-ui, sans-serif;
+      color: var(--on-surface);
+      /* Atmósfera de cámara coral: viñeta + resplandor + arcos de un gran salón (SVG en línea) + gradiente */
+      background-image:
+        radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0, 0, 0, .45) 100%),
+        radial-gradient(ellipse at 50% 0%, rgba(255, 107, 107, .20), transparent 60%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='360' viewBox='0 0 240 360'%3E%3Cg fill='none' stroke='%23D9B48F' stroke-opacity='.16' stroke-width='2'%3E%3Cpath d='M20 360V150Q20 40 120 0Q220 40 220 150V360'/%3E%3Cpath d='M50 360V160Q50 70 120 30Q190 70 190 160V360'/%3E%3Cpath d='M0 360V0M240 360V0'/%3E%3C/g%3E%3C/svg%3E"),
+        linear-gradient(180deg, var(--bg-from), var(--bg-to));
+      background-repeat: no-repeat, no-repeat, repeat-x, no-repeat;
+      background-position: center, center, center bottom, center;
+      background-size: auto, auto, 15rem auto, auto;
+      background-attachment: fixed;
+      display: flex;
+      justify-content: center;
+      padding: 1.5rem 1rem;
+    }
+
+    /* ===== Layout (mobile-first) ===== */
+    main {
+      width: 100%;
+      max-width: 32.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin: auto;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--outline);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(0.5rem);
+      -webkit-backdrop-filter: blur(0.5rem);
+    }
+
+    /* ===== Total ===== */
+    .total {
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+
+    .icon { fill: currentColor; display: inline-block; }
+
+    .total .icon-group {
+      width: 2.5rem; height: 2.5rem;
+      color: var(--outline);
+    }
+
+    #total {
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      font-size: clamp(5rem, 28vw, 8rem);
+      line-height: 1;
+      margin-top: 0.5rem;
+      text-shadow: 0 0 1.5rem rgba(255, 107, 107, .35);
+    }
+
+    #label {
+      font-family: 'Cinzel', serif;
+      font-size: 1.5rem;
+      letter-spacing: .08em;
+      color: var(--outline);
+      margin-top: 0.5rem;
+    }
+
+    /* ===== Tarjetas secundarias ===== */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .counter {
+      padding: 1.25rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .counter .person { width: 2.25rem; height: 2.25rem; color: var(--outline); }
+
+    .counter h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+
+    .count {
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      font-size: 3rem;
+      line-height: 1;
+    }
+
+    .controls { display: flex; gap: 0.75rem; }
+
+    /* ===== Botones M3 ===== */
+    .btn {
+      width: 3.5rem;
+      height: 3.5rem;
+      border: none;
+      border-radius: 1.125rem;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      color: var(--on-surface);
+      background: var(--secondary);
+      box-shadow: 0 0.125rem 0.375rem rgba(0, 0, 0, .3);
+      transition: transform .12s, box-shadow .12s, filter .12s;
+    }
+
+    .btn.add { background: var(--primary); color: var(--on-primary); }
+
+    .btn:hover:not(:disabled) { filter: brightness(1.12); box-shadow: 0 0.375rem 0.875rem rgba(0, 0, 0, .4); }
+    .btn:active:not(:disabled) { transform: scale(.92); }
+    .btn:focus-visible { outline: 0.1875rem solid var(--outline); outline-offset: 0.1875rem; }
+
+    .btn:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+
+    .btn .icon { width: 2rem; height: 2rem; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .btn { transition: none; }
+    }
+
+    /* ===== Aforo, proporción y barra de acciones ===== */
+    .meter { height: .5rem; border-radius: 999px; background: rgba(242, 233, 216, .15); overflow: hidden; margin-top: 1.25rem; }
+    .meter > div { height: 100%; width: 0; background: var(--outline); border-radius: inherit; transition: width .3s, background .3s; }
+    .meter.full > div { background: var(--primary); }
+    .cap-row { display: flex; justify-content: center; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; font-size: .95rem; }
+    .cap-row input { width: 4.5rem; padding: .35rem .5rem; border-radius: .75rem; border: 1px solid var(--outline);
+      background: rgba(0, 0, 0, .25); color: var(--on-surface); font: inherit; text-align: center; }
+    .cap-row input:focus-visible { outline: 3px solid var(--outline); outline-offset: 2px; }
+    #cap-status { color: var(--outline); }
+    .meter.full + .cap-row #cap-status { color: var(--primary); font-weight: 600; }
+
+    .stats { padding: 1.25rem 1.5rem; }
+    .stats h2 { font-family: 'Cinzel', serif; font-size: 1.1rem; font-weight: 500; margin-bottom: .75rem; }
+    .split { display: flex; height: .75rem; border-radius: 999px; overflow: hidden; background: rgba(242, 233, 216, .15); }
+    .split > div { height: 100%; transition: width .3s; }
+    #seg-men { background: var(--outline); }
+    #seg-women { background: var(--primary); }
+    .legend { display: flex; justify-content: space-between; margin-top: .6rem; font-size: .95rem; }
+    .dot { display: inline-block; width: .7rem; height: .7rem; border-radius: 50%; margin-right: .4rem; }
+
+    .toolbar { display: flex; gap: .75rem; justify-content: center; }
+    .tonal { height: 3rem; padding: 0 1.25rem; border: none; border-radius: 999px; display: flex; align-items: center; gap: .5rem;
+      font: 500 1rem 'Outfit', sans-serif; color: var(--on-surface); background: var(--secondary); cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .3); transition: transform .12s, filter .12s; }
+    .tonal .icon { width: 1.4rem; height: 1.4rem; }
+    .tonal:hover:not(:disabled) { filter: brightness(1.15); }
+    .tonal:active:not(:disabled) { transform: scale(.95); }
+    .tonal:focus-visible { outline: 3px solid var(--outline); outline-offset: 3px; }
+    .tonal:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+    .tonal.confirm { background: var(--primary); color: var(--on-primary); }
+
+    /* Pequeño "latido" al cambiar un número */
+    @keyframes bump { 40% { transform: scale(1.12); } }
+    .bump { animation: bump .25s ease-out; }
+    @media (prefers-reduced-motion: reduce) { .bump { animation: none; } .meter > div, .split > div { transition: none; } }
+  </style>
+</head>
+
+<body>
+  <!-- ============================================================
+       ICONOS (SVG en línea, 100% editables desde VS Code).
+       Para cambiar un icono, edita el <path>/<circle> de su <symbol>.
+       No dependen de ninguna fuente, así que nunca se ven como texto.
+       ============================================================ -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <!-- Sumar -->
+    <symbol id="i-add" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></symbol>
+    <!-- Restar -->
+    <symbol id="i-remove" viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></symbol>
+    <!-- Grupo de personas -->
+    <symbol id="i-groups" viewBox="0 0 24 24"><path d="M12 12.75c1.63 0 3.07.39 4.24.9 1.08.48 1.76 1.56 1.76 2.73V18H6v-1.61c0-1.18.68-2.26 1.76-2.73 1.17-.52 2.61-.91 4.24-.91zM4 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm1.13 1.1c-.37-.06-.74-.1-1.13-.1-.99 0-1.93.21-2.78.58C.48 14.9 0 15.62 0 16.43V18h4.5v-1.61c0-.83.23-1.61.63-2.29zM20 13c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm4 3.43c0-.81-.48-1.53-1.22-1.85-.85-.37-1.79-.58-2.78-.58-.39 0-.76.04-1.13.1.4.68.63 1.46.63 2.29V18H24v-1.57zM12 6c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/></symbol>
+    <!-- Deshacer -->
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05 1-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></symbol>
+    <!-- Reiniciar -->
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></symbol>
+    <!-- Hombre -->
+    <symbol id="i-man" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2.5"/><path d="M9 8h6a1 1 0 0 1 1 1v6h-2v7h-4v-7H8V9a1 1 0 0 1 1-1z"/></symbol>
+    <!-- Mujer -->
+    <symbol id="i-woman" viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2.5"/><path d="M12 8c1.1 0 2 .5 2.4 1.5L17 16h-2.5v6h-5v-6H7l2.6-6.5C10 8.5 10.9 8 12 8z"/></symbol>
+  </svg>
+  <main>
+    <!-- Contador principal -->
+    <section class="card total" aria-live="polite">
+      <svg class="icon icon-group" aria-hidden="true"><use href="#i-groups"/></svg>
+      <div id="total">0</div>
+      <div id="label">Personas</div>
+
+      <!-- Aforo máximo configurable -->
+      <div class="meter" id="meter" role="progressbar" aria-label="Aforo ocupado" aria-valuemin="0" aria-valuemax="100"><div id="meter-fill"></div></div>
+      <div class="cap-row">
+        <label for="cap">Aforo máximo</label>
+        <input id="cap" type="number" min="1" max="9999" inputmode="numeric">
+        <span id="cap-status" aria-live="polite"></span>
+      </div>
+    </section>
+
+    <!-- Contadores por categoría -->
+    <div class="grid">
+      <article class="card counter">
+        <svg class="icon person" aria-hidden="true"><use href="#i-man"/></svg>
+        <h2>Hombres</h2>
+        <div class="count" id="men-count">0</div>
+        <div class="controls">
+          <button class="btn" id="men-minus" aria-label="Restar un hombre" disabled>
+            <svg class="icon" aria-hidden="true"><use href="#i-remove"/></svg>
+          </button>
+          <button class="btn add" id="men-plus" aria-label="Sumar un hombre">
+            <svg class="icon" aria-hidden="true"><use href="#i-add"/></svg>
+          </button>
+        </div>
+      </article>
+
+      <article class="card counter">
+        <svg class="icon person" aria-hidden="true"><use href="#i-woman"/></svg>
+        <h2>Mujeres</h2>
+        <div class="count" id="women-count">0</div>
+        <div class="controls">
+          <button class="btn" id="women-minus" aria-label="Restar una mujer" disabled>
+            <svg class="icon" aria-hidden="true"><use href="#i-remove"/></svg>
+          </button>
+          <button class="btn add" id="women-plus" aria-label="Sumar una mujer">
+            <svg class="icon" aria-hidden="true"><use href="#i-add"/></svg>
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <!-- Proporción hombres / mujeres -->
+    <section class="card stats">
+      <h2>Proporción</h2>
+      <div class="split" aria-hidden="true"><div id="seg-men"></div><div id="seg-women"></div></div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--outline)"></i>Hombres <b id="pct-men">0%</b></span>
+        <span><i class="dot" style="background:var(--primary)"></i>Mujeres <b id="pct-women">0%</b></span>
+      </div>
+    </section>
+
+    <!-- Acciones -->
+    <div class="toolbar">
+      <button class="tonal" id="undo" disabled><svg class="icon" aria-hidden="true"><use href="#i-undo"/></svg>Deshacer</button>
+      <button class="tonal" id="reset" disabled><svg class="icon" aria-hidden="true"><use href="#i-reset"/></svg><span id="reset-text">Reiniciar</span></button>
+    </div>
+  </main>
+
+  <script>
+    // ===== Estado (se guarda en el navegador para no perderlo al recargar) =====
+    const KEY = 'contador-personas-v1';
+    const state = { men: 0, women: 0, cap: 50 };
+    const history = [];                 // instantáneas para "Deshacer"
+    let resetTimer = null;
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY));
+      if (saved) {
+        state.men = Math.max(0, saved.men | 0);
+        state.women = Math.max(0, saved.women | 0);
+        state.cap = Math.max(1, saved.cap | 0) || 50;
+      }
+    } catch (e) { /* sin almacenamiento: seguimos en memoria */ }
+
+    const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+
+    // ===== Referencias al DOM =====
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      total: $('total'), label: $('label'), meter: $('meter'), fill: $('meter-fill'),
+      cap: $('cap'), status: $('cap-status'), undo: $('undo'), reset: $('reset'), resetText: $('reset-text'),
+      men: { count: $('men-count'), minus: $('men-minus'), plus: $('men-plus'), seg: $('seg-men'), pct: $('pct-men') },
+      women: { count: $('women-count'), minus: $('women-minus'), plus: $('women-plus'), seg: $('seg-women'), pct: $('pct-women') }
+    };
+
+    // Animación "latido" cuando cambia un número
+    function bump(el) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+
+    let prev = { men: null, women: null, total: null };
+
+    // ===== Pintar =====
+    function render() {
+      const total = state.men + state.women;
+      const full = total >= state.cap;
+
+      els.total.textContent = total;
+      els.label.textContent = total === 1 ? 'Persona' : 'Personas';   // gramática dinámica
+      if (prev.total !== null && prev.total !== total) bump(els.total);
+
+      // Aforo
+      const ratio = Math.min(100, (total / state.cap) * 100);
+      els.fill.style.width = ratio + '%';
+      els.meter.classList.toggle('full', full);
+      els.meter.setAttribute('aria-valuenow', Math.round(ratio));
+      els.status.textContent = full ? 'Aforo completo' : `${total} / ${state.cap}`;
+      if (document.activeElement !== els.cap) els.cap.value = state.cap;
+
+      // Contadores y proporción
+      const pctMen = total ? Math.round((state.men / total) * 100) : 0;
+      const pct = { men: pctMen, women: total ? 100 - pctMen : 0 };
+      for (const key of ['men', 'women']) {
+        els[key].count.textContent = state[key];
+        if (prev[key] !== null && prev[key] !== state[key]) bump(els[key].count);
+        els[key].minus.disabled = state[key] === 0;   // nunca por debajo de 0
+        els[key].plus.disabled = full;                // no superar el aforo
+        els[key].seg.style.width = pct[key] + '%';
+        els[key].pct.textContent = pct[key] + '%';
+      }
+      prev = { men: state.men, women: state.women, total };
+
+      els.undo.disabled = history.length === 0;
+      els.reset.disabled = total === 0;
+      save();
+    }
+
+    // ===== Acciones =====
+    function snapshot() { history.push({ men: state.men, women: state.women }); if (history.length > 100) history.shift(); }
+
+    function change(key, delta) {
+      if (delta > 0 && state.men + state.women >= state.cap) return;
+      if (delta < 0 && state[key] === 0) return;
+      snapshot();
+      state[key] += delta;
+      if (navigator.vibrate) navigator.vibrate(10);   // feedback háptico en móviles
+      render();
+    }
+
+    function undo() {
+      const last = history.pop();
+      if (last) { state.men = last.men; state.women = last.women; render(); }
+    }
+
+    // Reiniciar en dos pasos (evita borrados accidentales); se puede deshacer
+    function cancelConfirm() {
+      clearTimeout(resetTimer); resetTimer = null;
+      els.reset.classList.remove('confirm'); els.resetText.textContent = 'Reiniciar';
+    }
+    function reset() {
+      if (!resetTimer) {
+        els.reset.classList.add('confirm'); els.resetText.textContent = '¿Seguro?';
+        resetTimer = setTimeout(cancelConfirm, 3000);
+        return;
+      }
+      cancelConfirm(); snapshot(); state.men = 0; state.women = 0; render();
+    }
+
+    // ===== Eventos =====
+    for (const key of ['men', 'women']) {
+      els[key].plus.addEventListener('click', () => change(key, 1));
+      els[key].minus.addEventListener('click', () => change(key, -1));
+    }
+    els.undo.addEventListener('click', undo);
+    els.reset.addEventListener('click', reset);
+    els.cap.addEventListener('input', () => {
+      const v = parseInt(els.cap.value, 10);
+      if (v >= 1) { state.cap = Math.min(v, 9999); render(); }
+    });
+    els.cap.addEventListener('blur', () => { els.cap.value = state.cap; });
+
+    // Atajos de teclado: H/M suman, Mayús+H/M restan, Ctrl+Z deshace
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      const k = e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); undo(); }
+      else if (k === 'h') change('men', e.shiftKey ? -1 : 1);
+      else if (k === 'm') change('women', e.shiftKey ? -1 : 1);
+    });
+
+    render();
+  </script>
+</body>
+</html>
